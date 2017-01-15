@@ -51,13 +51,13 @@ if __name__ == '__main__':
 
         if x_plan < (float(length[0]) / 2.0):
             if west: x_plan-=1;    deg.append(180)
-            elif south: y_plan+=1; deg.append(270)
-            elif north: y_plan-=1; deg.append(90)
+            elif south: y_plan+=1; deg.append(90)
+            elif north: y_plan-=1; deg.append(-90)
             elif east: x_plan+=1;  deg.append(0)
         else:
             if east: x_plan+=1;    deg.append(0)
-            elif south: y_plan+=1; deg.append(270)
-            elif north: y_plan-=1; deg.append(90)
+            elif south: y_plan+=1; deg.append(90)
+            elif north: y_plan-=1; deg.append(-90)
             elif west: x_plan-=1;  deg.append(180)
         point.x = x_plan * 0.05
         point.y = (float(length[1])  - y_plan ) * 0.05
