@@ -29,14 +29,14 @@ class aho(object):
         self.pub4 = rospy.Publisher('tff',Point,queue_size=10)
         #pgm,yamlの読み込み
         pgm,yaml = [],[]
-        f = open('19_floor_extended.pgm')
+        f = open('/home/masaya/map/19_floor_extended.pgm')
         pgm = f.readlines()
         for i in range(len(pgm)):
             pgm[i] = pgm[i].replace('\n',"")
             pgm[i] = pgm[i].replace('\r',"")
         f.close()
         self.length = pgm[2].split(" ")
-        f = open('19_floor_extended.yaml')
+        f = open('/home/masaya/map/19_floor_extended.yaml')
         yaml = f.readlines()
         for i in range(len(yaml)):
             yaml[i] = yaml[i].replace('\n',"")
@@ -69,7 +69,7 @@ class aho(object):
         for i in range(int(self.length[1])):
             for j in range(int(self.length[0])):
                 if self.coordinate[i][j] == "0":
-                    aaa = 15
+                    aaa = 5
                     bbb = aaa + 1
                     ccc = aaa
                     ddd = aaa - 1
@@ -86,7 +86,7 @@ class aho(object):
                 self.point2.x = position[0]
                 self.point2.y = position[1]
                 self.pub4.publish(self.point2)
-                print self.x,self.y
+                #print self.x,self.y
 
         except:
             print "勃ち待ち"
@@ -132,6 +132,7 @@ class aho(object):
 
         #通ったところを壁にする
         self.coordinate[self.y_plan][self.x_plan] = "100"
+        #print self.south, self.north, self.east, self.west
         if self.x_plan < (float(self.length[0]) / 2.0):
             if self.west:   
                 self.x_plan-=1
@@ -171,7 +172,8 @@ class aho(object):
         self.kazu.pop(0)
         if self.count % 6 == 0:
             self.pub3.publish(self.point)
-        #print self.point.x,self.point.y
+            print self.point.x,self.point.y
+        #print float(self.length[1]), self.y_plan
 
 
     def run(self):
@@ -179,7 +181,7 @@ class aho(object):
             self.tf_change()
             self.plan()
             self.mark()
-            rospy.sleep(0.01)
+            rospy.sleep(0.001)
 
 if __name__ == '__main__':
     hoge = aho()

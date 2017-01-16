@@ -14,7 +14,7 @@ class navigation(object):
         self.tf = TransformListener()
         self.vel = Twist()
         rospy.loginfo("Waiting for the tf to come up")
-        time.sleep(2)
+        time.sleep(1)
 
     def tf_change(self):
         try:
@@ -25,29 +25,71 @@ class navigation(object):
                 position, quaternion = self.tf.lookupTransform("/map", "/base_footprint", t)
             else: position, quaternion = [0,0,0,0], [0,0,0,0]
         except:
-            pass
+            position, quaternion = [0,0,0,0], [0,0,0,0]
         return position, self.quaternion_to_euler_to_deg(quaternion)
 
     def quaternion_to_euler_to_deg(self, q):
         e = tf.transformations.euler_from_quaternion((q[0], q[1], q[2], q[3]))
         deg = math.degrees(e[2])
-        #print d 
+        if deg < 0: deg = 360 + deg
         return deg
 
-    def nav(self):   
-        c = 0
+    def ask_destance_and_ang(self,c=0, a=10):
+        range_ang = [0, 0, 0, 0] # [0]:- [1]:+ [2]:deg [3]:difference
         x, y, z = self.read_waypoint()
-        while not rospy.is_shutdown():
-            pos, deg = self.tf_change()
-            if x[c] == "exit": break
+        pos, deg = self.tf_change()
+        ang = math.degrees(math.atan2(x[c] - pos[0], y[c] - pos[1]))
+        print x[c],y[c]
+        destance = math.sqrt(math.pow(x[c] - pos[0], 2.0) + math.pow(y[c] - pos[1], 2.0))
+        ang = 90 - ang
+        if ang < 0: ang = ang + 360
+        if ang < 0: ang = ang + 180
+        range_ang[0] = ang - a
+        if deg < 0: range_ang[0] = ang + 360
+        range_ang[1] = ang + a
+        range_ang[2] = deg
+        range_ang[3] = ang - deg#差
+        #print range_ang[0],range_ang[2],range_ang[1]
+        return destance, range_ang
 
-            #if not deg < -170:
-                #self.vel.angular.z = 0.4
-            #else: self.vel.angular.z = 0; 
-            #self.pub.publish(self.vel)
-            #print x[c]
-            print deg
-            c += 1
+    def angle_loop(self, c = 0, vel = 1, a=10):
+        destance, ang = self.ask_destance_and_ang(c, a)
+        while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
+            destance, ang= self.ask_destance_and_ang(c, a)
+            if ang[3] >= 0: self.vel.angular.z =  vel
+            if ang[3] <= 0: self.vel.angular.z = -vel
+            self.pub.publish(self.vel)
+        self.vel.angular.z = 0
+        self.pub.publish(self.vel)
+
+    def destance_loop(self, c = 0, vel = 0.3,a = 1):
+        destance, ang = self.ask_destance_and_ang(c, a)
+        while not destance <=0.15 and not rospy.is_shutdown():
+            destance, ang = self.ask_destance_and_ang(c, a)
+            print destance
+            while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
+                destance, ang= self.ask_destance_and_ang(c, a)
+                if ang[3] >= 0: self.vel.angular.z =  vel
+                if ang[3] <= 0: self.vel.angular.z = -vel
+                self.vel.linear.x = 0
+                self.pub.publish(self.vel)
+            self.vel.angular.z = 0
+            self.pub.publish(self.vel)
+            self.vel.linear.x = 0.15
+        self.vel.linear.x = 0
+        self.pub.publish(self.vel)
+            
+
+    def nav(self):   
+        i = 0
+        while not rospy.is_shutdown():
+            self.angle_loop(i, 2.5, 10)
+            self.angle_loop(i, 0.3, 2)
+            self.destance_loop(i)
+            i += 1
+            print i
+            self.vel.angular.z = 0; 
+            self.pub.publish(self.vel)
 
     def read_waypoint(self):
         x, y, z = [], [], []
@@ -56,15 +98,14 @@ class navigation(object):
         for i in range(1,len(way)):
             way[i] = way[i].replace('\n',"")
             point = way[i].split(",")
-            x.append(point[0])
-            y.append(point[1])
+            x.append(float(point[0]))
+            y.append(float(point[1]))
             z.append(point[2])
         f.close()
         x.append("exit")
         y.append("exit")
         z.append("exit")
         return x, y, z
-
 
 if __name__ == '__main__':
     t = navigation()
