@@ -14,6 +14,7 @@ class navigation(object):
         self.pub2 = rospy.Publisher('way_point', Marker, queue_size=10)
         self.tf = TransformListener()
         self.vel = Twist()
+        self.speed = 0.15
         rospy.loginfo("Waiting for the tf to come up")
         rospy.sleep(1)
 
@@ -57,35 +58,36 @@ class navigation(object):
         while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
             destance, ang= self.ask_destance_and_ang(c, a)
             if ang[3] >= 0: self.vel.angular.z =  vel
-            if ang[3] <= 0: self.vel.angular.z = -vel
+            else : self.vel.angular.z = -vel
+            self.vel.linear.x = 0
             self.pub.publish(self.vel)
         self.vel.angular.z = 0
         self.pub.publish(self.vel)
+        return destance
 
-    def destance_loop(self, c = 0, vel = 0.15,a = 1):
+    def destance_loop(self, c = 0, vel = 0, a = 2):
         destance, ang = self.ask_destance_and_ang(c, a)
-        while not destance <=0.1 and not rospy.is_shutdown():
-            destance, ang = self.ask_destance_and_ang(c, a)
-            while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
-                destance, ang= self.ask_destance_and_ang(c, a)
-                if ang[3] >= 0: self.vel.angular.z =  0.3
-                if ang[3] <= 0: self.vel.angular.z = -0.3
-                self.vel.linear.x = 0
-                self.pub.publish(self.vel)#turn
-            self.vel.angular.z = 0
+        while not destance <= 0.03 and not rospy.is_shutdown():
+            destance = self.angle_loop(c, 0.35, 1)
             self.vel.linear.x = vel
             self.pub.publish(self.vel)#straight
-        self.vel.linear.x = 0
+        self.speed_0(self.speed)
         self.pub.publish(self.vel)
-            
+    
+    def speed_0(self, s):
+        for i in range(1,11):
+            if rospy.is_shutdown(): break
+            self.vel.linear.x = self.speed - s/10*i 
+            self.pub.publish(self.vel)#straight
+            rospy.sleep(0.05)
 
     def nav(self):   
-        i = 45 #start_waypoint
+        i = 10 #start_waypoint
         while not rospy.is_shutdown():
             print i
-            self.angle_loop(i, 2.5, 10)
-            self.angle_loop(i, 0.3, 2)
-            self.destance_loop(i)
+            self.angle_loop(i, 2, 5)
+            self.angle_loop(i, 0.35, 1)
+            self.destance_loop(i, self.speed)
             i += 1
             self.vel.angular.z = 0; 
             self.pub.publish(self.vel)
@@ -123,8 +125,6 @@ class navigation(object):
 if __name__ == '__main__':
     t = navigation()
     try:
-            t.nav()
-            #rospy.sleep(0.1)
-            
+        t.nav()
     except rospy.ROSInterruptException:
         pass
