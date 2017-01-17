@@ -5,16 +5,18 @@ import math
 import time
 import tf
 from tf import TransformListener
+from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point, Quaternion, Twist
 
 class navigation(object):
     def __init__(self): 
         rospy.init_node('sweep_nav')
         self.pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
+        self.pub2 = rospy.Publisher('way_point', Marker, queue_size=10)
         self.tf = TransformListener()
         self.vel = Twist()
         rospy.loginfo("Waiting for the tf to come up")
-        time.sleep(1)
+        rospy.sleep(1)
 
     def tf_change(self):
         try:
@@ -39,7 +41,8 @@ class navigation(object):
         x, y, z = self.read_waypoint()
         pos, deg = self.tf_change()
         ang = math.degrees(math.atan2(x[c] - pos[0], y[c] - pos[1]))
-        print x[c],y[c]
+        #print x[c],y[c]
+        self.mark(x[c], y[c])
         destance = math.sqrt(math.pow(x[c] - pos[0], 2.0) + math.pow(y[c] - pos[1], 2.0))
         ang = 90 - ang
         if ang < 0: ang = ang + 360
@@ -66,7 +69,7 @@ class navigation(object):
         destance, ang = self.ask_destance_and_ang(c, a)
         while not destance <=0.15 and not rospy.is_shutdown():
             destance, ang = self.ask_destance_and_ang(c, a)
-            print destance
+            #print destance
             while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
                 destance, ang= self.ask_destance_and_ang(c, a)
                 if ang[3] >= 0: self.vel.angular.z =  vel
@@ -83,11 +86,11 @@ class navigation(object):
     def nav(self):   
         i = 0
         while not rospy.is_shutdown():
+            print i
             self.angle_loop(i, 2.5, 10)
             self.angle_loop(i, 0.3, 2)
             self.destance_loop(i)
             i += 1
-            print i
             self.vel.angular.z = 0; 
             self.pub.publish(self.vel)
 
@@ -106,6 +109,23 @@ class navigation(object):
         y.append("exit")
         z.append("exit")
         return x, y, z
+
+    def mark(self, x = 0, y = 0):
+        marker = Marker()
+        marker.header.frame_id = 'map'
+        marker.type = 2
+        marker.action = marker.ADD
+        marker.scale.x = 0.1
+        marker.scale.y = 0.1
+        marker.scale.z = 0.1
+        marker.color.a = 1
+        marker.color.r = 1
+        marker.pose.position.x = x
+        marker.pose.position.y = y
+        marker.pose.position.z = 0
+        marker.pose.orientation.w = 1.0
+        marker.lifetime = rospy.Duration(100)
+        self.pub2.publish(marker)
 
 if __name__ == '__main__':
     t = navigation()
