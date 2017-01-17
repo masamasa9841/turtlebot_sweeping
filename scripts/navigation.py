@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*- 
 import rospy
 import math 
-import time
 import tf
 from tf import TransformListener
 from visualization_msgs.msg import Marker
@@ -41,7 +40,6 @@ class navigation(object):
         x, y, z = self.read_waypoint()
         pos, deg = self.tf_change()
         ang = math.degrees(math.atan2(x[c] - pos[0], y[c] - pos[1]))
-        #print x[c],y[c]
         self.mark(x[c], y[c])
         destance = math.sqrt(math.pow(x[c] - pos[0], 2.0) + math.pow(y[c] - pos[1], 2.0))
         ang = 90 - ang
@@ -51,8 +49,7 @@ class navigation(object):
         if deg < 0: range_ang[0] = ang + 360
         range_ang[1] = ang + a
         range_ang[2] = deg
-        range_ang[3] = ang - deg#差
-        #print range_ang[0],range_ang[2],range_ang[1]
+        range_ang[3] = ang - deg
         return destance, range_ang
 
     def angle_loop(self, c = 0, vel = 1, a=10):
@@ -65,26 +62,25 @@ class navigation(object):
         self.vel.angular.z = 0
         self.pub.publish(self.vel)
 
-    def destance_loop(self, c = 0, vel = 0.3,a = 1):
+    def destance_loop(self, c = 0, vel = 0.15,a = 1):
         destance, ang = self.ask_destance_and_ang(c, a)
-        while not destance <=0.15 and not rospy.is_shutdown():
+        while not destance <=0.1 and not rospy.is_shutdown():
             destance, ang = self.ask_destance_and_ang(c, a)
-            #print destance
             while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
                 destance, ang= self.ask_destance_and_ang(c, a)
-                if ang[3] >= 0: self.vel.angular.z =  vel
-                if ang[3] <= 0: self.vel.angular.z = -vel
+                if ang[3] >= 0: self.vel.angular.z =  0.3
+                if ang[3] <= 0: self.vel.angular.z = -0.3
                 self.vel.linear.x = 0
-                self.pub.publish(self.vel)
+                self.pub.publish(self.vel)#turn
             self.vel.angular.z = 0
-            self.pub.publish(self.vel)
-            self.vel.linear.x = 0.15
+            self.vel.linear.x = vel
+            self.pub.publish(self.vel)#straight
         self.vel.linear.x = 0
         self.pub.publish(self.vel)
             
 
     def nav(self):   
-        i = 0
+        i = 45
         while not rospy.is_shutdown():
             print i
             self.angle_loop(i, 2.5, 10)
@@ -124,7 +120,7 @@ class navigation(object):
         marker.pose.position.y = y
         marker.pose.position.z = 0
         marker.pose.orientation.w = 1.0
-        marker.lifetime = rospy.Duration(100)
+        marker.lifetime = rospy.Duration()
         self.pub2.publish(marker)
 
 if __name__ == '__main__':
