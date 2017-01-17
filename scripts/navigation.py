@@ -40,7 +40,7 @@ class navigation(object):
         x, y, z = self.read_waypoint()
         pos, deg = self.tf_change()
         ang = math.degrees(math.atan2(x[c] - pos[0], y[c] - pos[1]))
-        self.mark(x[c], y[c])
+        self.mark(x[c], y[c], pos[0], pos[1])
         destance = math.sqrt(math.pow(x[c] - pos[0], 2.0) + math.pow(y[c] - pos[1], 2.0))
         ang = 90 - ang
         if ang < 0: ang = ang + 360
@@ -80,7 +80,7 @@ class navigation(object):
             
 
     def nav(self):   
-        i = 45
+        i = 45 #start_waypoint
         while not rospy.is_shutdown():
             print i
             self.angle_loop(i, 2.5, 10)
@@ -106,20 +106,17 @@ class navigation(object):
         z.append("exit")
         return x, y, z
 
-    def mark(self, x = 0, y = 0):
+    def mark(self, x = 0, y = 0, x2 = 0, y2 = 0):
         marker = Marker()
         marker.header.frame_id = 'map'
-        marker.type = 2
+        marker.type = 4
         marker.action = marker.ADD
-        marker.scale.x = 0.1
-        marker.scale.y = 0.1
-        marker.scale.z = 0.1
+        marker.scale.x = 0.01
         marker.color.a = 1
-        marker.color.r = 1
-        marker.pose.position.x = x
-        marker.pose.position.y = y
-        marker.pose.position.z = 0
+        marker.color.b = 1
         marker.pose.orientation.w = 1.0
+        marker.points.append(Point(x,y,0))
+        marker.points.append(Point(x2,y2,0))
         marker.lifetime = rospy.Duration()
         self.pub2.publish(marker)
 
