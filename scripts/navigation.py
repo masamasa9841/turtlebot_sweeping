@@ -6,17 +6,23 @@ import tf
 from tf import TransformListener
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point, Quaternion, Twist
+from sensor_msgs.msg import MagneticField
 
 class navigation(object):
     def __init__(self): 
+        rospy.loginfo("Waiting for the tf to come up")
+        rospy.sleep(1)
         rospy.init_node('sweep_nav')
+        self.sub = rospy.Subscriber('/imu/mag', MagneticField, self.callback, queue_size = 10)
         self.pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
         self.pub2 = rospy.Publisher('way_point', Marker, queue_size=10)
         self.tf = TransformListener()
         self.vel = Twist()
         self.speed = 0.15
-        rospy.loginfo("Waiting for the tf to come up")
-        rospy.sleep(1)
+
+    def callback(self, msg): 
+        self.mag = msg.magnetic_field.z * -100000
+        print self.mag
 
     def tf_change(self):
         try:
@@ -116,10 +122,8 @@ class navigation(object):
         marker.scale.x = 0.01
         marker.color.a = 1
         marker.color.b = 1
-        marker.pose.orientation.w = 1.0
         marker.points.append(Point(x,y,0))
         marker.points.append(Point(x2,y2,0))
-        marker.lifetime = rospy.Duration()
         self.pub2.publish(marker)
 
 if __name__ == '__main__':
