@@ -11,18 +11,34 @@ from sensor_msgs.msg import MagneticField
 class navigation(object):
     def __init__(self): 
         rospy.loginfo("Waiting for the tf to come up")
-        rospy.sleep(1)
+        rospy.sleep(3)
         rospy.init_node('sweep_nav')
         self.sub = rospy.Subscriber('/imu/mag', MagneticField, self.callback, queue_size = 10)
         self.pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
         self.pub2 = rospy.Publisher('way_point', Marker, queue_size=10)
+        self.pub3 = rospy.Publisher('z_mag', Marker, queue_size=10)
+
+        self.marker = Marker()
+        self.marker.header.frame_id = 'map'
+        self.marker.type = 2
+        self.marker.action = self.marker.ADD
+        self.marker.scale.x = 0.3
+        self.marker.scale.y = 0.3
+        self.marker.color.a = 1
+
         self.tf = TransformListener()
         self.vel = Twist()
         self.speed = 0.15
+        self.X_KOUSHI = 200
+        self.Y_KOUSHI = 200
+        self.id_list = [[i + self.X_KOUSHI * j for i in range(self.X_KOUSHI)] for j in range(self.Y_KOUSHI)]
+        self.mag = 0
 
     def callback(self, msg): 
-        self.mag = msg.magnetic_field.z * -100000
-        print self.mag
+        #self.mag = msg.magnetic_field.z * -100000
+        #T
+        self.mag = -(msg.magnetic_field.z + 4.35 * 0.00001) * 0.15* 10000000#bias
+        #print self.mag
 
     def tf_change(self):
         try:
@@ -48,6 +64,7 @@ class navigation(object):
         pos, deg = self.tf_change()
         ang = math.degrees(math.atan2(x[c] - pos[0], y[c] - pos[1]))
         self.mark(x[c], y[c], pos[0], pos[1])
+        self.mark_mag(x[0], y[0], pos[0], pos[1])
         destance = math.sqrt(math.pow(x[c] - pos[0], 2.0) + math.pow(y[c] - pos[1], 2.0))
         ang = 90 - ang
         if ang < 0: ang = ang + 360
@@ -63,6 +80,7 @@ class navigation(object):
         destance, ang = self.ask_destance_and_ang(c, a)
         while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
             destance, ang= self.ask_destance_and_ang(c, a)
+            print ang[3]
             if ang[3] >= 0: self.vel.angular.z =  vel
             else : self.vel.angular.z = -vel
             self.vel.linear.x = 0
@@ -88,7 +106,7 @@ class navigation(object):
             rospy.sleep(0.05)
 
     def nav(self):   
-        i = 10 #start_waypoint
+        i = 1 #start_waypoint
         while not rospy.is_shutdown():
             print i
             self.angle_loop(i, 2, 5)
@@ -102,12 +120,12 @@ class navigation(object):
         x, y, z = [], [], []
         f = open('/home/masaya/catkin_ws/src/turtlebot_sweeping/map/map.txt','r')
         way = f.readlines()
-        for i in range(1,len(way)):
+        for i in range(len(way)):
             way[i] = way[i].replace('\n',"")
             point = way[i].split(",")
             x.append(float(point[0]))
             y.append(float(point[1]))
-            z.append(point[2])
+            #z.append(point[2])
         f.close()
         x.append("exit")
         y.append("exit")
@@ -117,7 +135,7 @@ class navigation(object):
     def mark(self, x = 0, y = 0, x2 = 0, y2 = 0):
         marker = Marker()
         marker.header.frame_id = 'map'
-        marker.type = 4
+        marker.type = 4#line_strip
         marker.action = marker.ADD
         marker.scale.x = 0.01
         marker.color.a = 1
@@ -125,6 +143,20 @@ class navigation(object):
         marker.points.append(Point(x,y,0))
         marker.points.append(Point(x2,y2,0))
         self.pub2.publish(marker)
+
+    def mark_mag(self,x_length = 240,y_length = 238, x = 0, y = 0):
+        x_math = x_length * 0.05 / self.X_KOUSHI
+        y_math = y_length * 0.05 / self.Y_KOUSHI
+        for i in range(self.X_KOUSHI):
+            for j in range(self.Y_KOUSHI):
+                if 0 < x - x_math * i < x_math and 0 < y - y_math * j < y_math :  
+                    self.marker.id = self.id_list[j][i]
+        self.marker.color.r = 1
+        self.marker.pose.position.x = x
+        self.marker.pose.position.y = y
+        self.marker.pose.position.z = self.mag / 2.0
+        self.marker.scale.z = 0.3#self.mag
+        #self.pub3.publish(self.marker)
 
 if __name__ == '__main__':
     t = navigation()
