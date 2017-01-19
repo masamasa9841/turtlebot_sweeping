@@ -13,12 +13,16 @@ class navigation(object):
         rospy.loginfo("Waiting for the tf to come up")
         rospy.sleep(2)
         rospy.init_node('sweep_nav')
-        self.sub = rospy.Subscriber('/imu/mag', MagneticField, self.callback, queue_size = 10)
+        sub = rospy.Subscriber('/imu/mag', MagneticField, self.callback, queue_size = 10)
         self.pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
         self.pub2 = rospy.Publisher('way_point', Marker, queue_size=10)
         self.pub3 = rospy.Publisher('z_mag', Marker, queue_size=10)
 
         self.marker = Marker()
+        self.id_new = 0
+        self.id_old = 0
+        self.count = 1
+        self.z = []
         self.marker.header.frame_id = 'map'
         self.marker.type = 2
         self.marker.action = self.marker.ADD
@@ -89,9 +93,9 @@ class navigation(object):
             if ang[3] >= 0: self.vel.angular.z =  speed
             else : self.vel.angular.z = -speed
             self.vel.linear.x = 0
-            self.pub.publish(self.vel)
+            #self.pub.publish(self.vel)
         self.vel.angular.z = 0
-        self.pub.publish(self.vel)
+        #self.pub.publish(self.vel)
         return destance
 
     def destance_loop(self, c = 0, vel = 0, a = 2):
@@ -99,15 +103,15 @@ class navigation(object):
         while not destance <= 0.03 and not rospy.is_shutdown():
             destance = self.angle_loop(c, 0.35, 1)
             self.vel.linear.x = vel
-            self.pub.publish(self.vel)#straight
+            #self.pub.publish(self.vel)#straight
         self.speed_0(self.speed)
-        self.pub.publish(self.vel)
+        #self.pub.publish(self.vel)
     
     def speed_0(self, s):
         for i in range(1,11):
             if rospy.is_shutdown(): break
             self.vel.linear.x = self.speed - s/10*i 
-            self.pub.publish(self.vel)#straight
+            #self.pub.publish(self.vel)#straight
             rospy.sleep(0.05)
 
     def nav(self):   
@@ -119,7 +123,7 @@ class navigation(object):
             self.destance_loop(i, self.speed)
             i += 1
             self.vel.angular.z = 0; 
-            self.pub.publish(self.vel)
+            #self.pub.publish(self.vel)
         self.f.close()
 
     def read_waypoint(self):
@@ -150,19 +154,29 @@ class navigation(object):
         self.pub2.publish(marker)
 
     def mark_mag(self,x_length = 240,y_length = 238, x = 0, y = 0):
+        self.id_old = self.id_new 
+        z = self.mag / 2.0 * -10000000 / 2.0
         x_math = x_length * 0.05 / self.X_KOUSHI
         y_math = y_length * 0.05 / self.Y_KOUSHI
         for i in range(self.X_KOUSHI):
             for j in range(self.Y_KOUSHI):
                 if 0 < x - x_math * i < x_math and 0 < y - y_math * j < y_math :  
-                    self.marker.id = self.id_list[j][i]
+                    self.id_new = self.id_list[j][i]
+        if self.id_new == self.id_old:
+            self.count += 1
+            self.z.append(z)
+        else : 
+            self.count = 1
+            self.z = []
+            self.z.append(z)
+        self.marker.id = self.id_new
         self.marker.color.r = 1
         self.marker.pose.position.x = x
         self.marker.pose.position.y = y
-        self.marker.pose.position.z = self.mag / 2.0 * -10000000 / 2.0
+        self.marker.pose.position.z = sum(self.z) / self.count
         self.pub3.publish(self.marker)
         after = rospy.get_time()
-        if after - self.now > 0.1: #0.1秒ごとに記録
+        if after - self.now > 0.05: #0.1秒ごとに記録
             self.now = rospy.get_time()
             self.f.write(str(x)+" "+str(y)+" "+str(self.mag)+"\n")
 
