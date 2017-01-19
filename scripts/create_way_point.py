@@ -35,7 +35,7 @@ if __name__ == '__main__':
                 if not i > r: r = i
                 xy[i-r:i+x+1,j-x:j+x+1] = np.where(xy[i-r:i+x+1,j-x:j+x+1] == "0","0","100")
 
-    f = open('/home/masaya/catkin_ws/src/turtlebot_sweeping/map/map.txt','w')
+    f = open('../map/map.txt','w')
     f.write(str(length[0])+","+str(length[1])+"\n")
     count = 0
     old_x, old_y = 0, 0
@@ -69,7 +69,8 @@ if __name__ == '__main__':
         if not deg[0] == deg[1]:
             difference_y = abs(point.y - old_y)
             difference_x = abs(point.x - old_x) 
-            if not difference_x <= 0.05 and not difference_y <= 0.05:
+            if not difference_x == 0 and not difference_y == 0:
+            #if not difference_x <= 0.05 and not difference_y <= 0.05: #low
                 #print point.x, point.y
                 f.write(str(point.x)+","+str(point.y)+","+str(point.z)+"\n")
             old_x = point.x

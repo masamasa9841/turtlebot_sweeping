@@ -11,7 +11,7 @@ from sensor_msgs.msg import MagneticField
 class navigation(object):
     def __init__(self): 
         rospy.loginfo("Waiting for the tf to come up")
-        rospy.sleep(3)
+        rospy.sleep(2)
         rospy.init_node('sweep_nav')
         self.sub = rospy.Subscriber('/imu/mag', MagneticField, self.callback, queue_size = 10)
         self.pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
@@ -22,23 +22,24 @@ class navigation(object):
         self.marker.header.frame_id = 'map'
         self.marker.type = 2
         self.marker.action = self.marker.ADD
-        self.marker.scale.x = 0.3
-        self.marker.scale.y = 0.3
+        self.marker.scale.x = 0.1
+        self.marker.scale.y = 0.1
         self.marker.color.a = 1
+        self.marker.scale.z = 0.1
 
         self.tf = TransformListener()
         self.vel = Twist()
         self.speed = 0.15
-        self.X_KOUSHI = 200
-        self.Y_KOUSHI = 200
+        self.X_KOUSHI = 150
+        self.Y_KOUSHI = 150
         self.id_list = [[i + self.X_KOUSHI * j for i in range(self.X_KOUSHI)] for j in range(self.Y_KOUSHI)]
         self.mag = 0
+        self.f = open('../map/way.txt','w')
+        self.now = rospy.get_time()
 
     def callback(self, msg): 
-        #self.mag = msg.magnetic_field.z * -100000
         #T
-        self.mag = -(msg.magnetic_field.z + 4.35 * 0.00001) * 0.15* 10000000#bias
-        #print self.mag
+        self.mag = (msg.magnetic_field.z + 4.35 * 0.00001) * 0.15 #bias
 
     def tf_change(self):
         try:
@@ -76,13 +77,17 @@ class navigation(object):
         range_ang[3] = ang - deg
         return destance, range_ang
 
-    def angle_loop(self, c = 0, vel = 1, a=10):
+    def angle_loop(self, c = 0, vel = 1, a=8):
         destance, ang = self.ask_destance_and_ang(c, a)
         while not ang[0] < ang[2] < ang[1] and not rospy.is_shutdown(): 
             destance, ang= self.ask_destance_and_ang(c, a)
-            print ang[3]
-            if ang[3] >= 0: self.vel.angular.z =  vel
-            else : self.vel.angular.z = -vel
+            if vel < 0.5:
+                if abs(ang[3]) > 10:
+                    speed = 1
+                else: speed = vel
+            else: speed = vel
+            if ang[3] >= 0: self.vel.angular.z =  speed
+            else : self.vel.angular.z = -speed
             self.vel.linear.x = 0
             self.pub.publish(self.vel)
         self.vel.angular.z = 0
@@ -106,26 +111,26 @@ class navigation(object):
             rospy.sleep(0.05)
 
     def nav(self):   
-        i = 1 #start_waypoint
+        i = 100 #start_waypoint
         while not rospy.is_shutdown():
-            print i
+            print str(i)+"times"
             self.angle_loop(i, 2, 5)
             self.angle_loop(i, 0.35, 1)
             self.destance_loop(i, self.speed)
             i += 1
             self.vel.angular.z = 0; 
             self.pub.publish(self.vel)
+        self.f.close()
 
     def read_waypoint(self):
         x, y, z = [], [], []
-        f = open('/home/masaya/catkin_ws/src/turtlebot_sweeping/map/map.txt','r')
+        f = open('../map/map.txt','r')
         way = f.readlines()
         for i in range(len(way)):
             way[i] = way[i].replace('\n',"")
             point = way[i].split(",")
             x.append(float(point[0]))
             y.append(float(point[1]))
-            #z.append(point[2])
         f.close()
         x.append("exit")
         y.append("exit")
@@ -154,9 +159,12 @@ class navigation(object):
         self.marker.color.r = 1
         self.marker.pose.position.x = x
         self.marker.pose.position.y = y
-        self.marker.pose.position.z = self.mag / 2.0
-        self.marker.scale.z = 0.3#self.mag
-        #self.pub3.publish(self.marker)
+        self.marker.pose.position.z = self.mag / 2.0 * -10000000 / 2.0
+        self.pub3.publish(self.marker)
+        after = rospy.get_time()
+        if after - self.now > 0.1: #0.1秒ごとに記録
+            self.now = rospy.get_time()
+            self.f.write(str(x)+" "+str(y)+" "+str(self.mag)+"\n")
 
 if __name__ == '__main__':
     t = navigation()
