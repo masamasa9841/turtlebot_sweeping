@@ -3,6 +3,7 @@
 import rospy
 import math 
 import tf
+import colorsys
 from tf import TransformListener
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point, Quaternion, Twist
@@ -24,11 +25,11 @@ class navigation(object):
         self.count = 1
         self.z = []
         self.marker.header.frame_id = 'map'
-        self.marker.type = 2
+        self.marker.type = 3
         self.marker.action = self.marker.ADD
         self.marker.scale.x = 0.1
         self.marker.scale.y = 0.1
-        self.marker.color.a = 1
+        self.marker.color.a = 0.5
         self.marker.scale.z = 0.1
 
         self.tf = TransformListener()
@@ -93,9 +94,9 @@ class navigation(object):
             if ang[3] >= 0: self.vel.angular.z =  speed
             else : self.vel.angular.z = -speed
             self.vel.linear.x = 0
-            #self.pub.publish(self.vel)
+            self.pub.publish(self.vel)
         self.vel.angular.z = 0
-        #self.pub.publish(self.vel)
+        self.pub.publish(self.vel)
         return destance
 
     def destance_loop(self, c = 0, vel = 0, a = 2):
@@ -103,15 +104,15 @@ class navigation(object):
         while not destance <= 0.03 and not rospy.is_shutdown():
             destance = self.angle_loop(c, 0.35, 1)
             self.vel.linear.x = vel
-            #self.pub.publish(self.vel)#straight
+            self.pub.publish(self.vel)#straight
         self.speed_0(self.speed)
-        #self.pub.publish(self.vel)
+        self.pub.publish(self.vel)
     
     def speed_0(self, s):
         for i in range(1,11):
             if rospy.is_shutdown(): break
             self.vel.linear.x = self.speed - s/10*i 
-            #self.pub.publish(self.vel)#straight
+            self.pub.publish(self.vel)#straight
             rospy.sleep(0.05)
 
     def nav(self):   
@@ -123,7 +124,7 @@ class navigation(object):
             self.destance_loop(i, self.speed)
             i += 1
             self.vel.angular.z = 0; 
-            #self.pub.publish(self.vel)
+            self.pub.publish(self.vel)
         self.f.close()
 
     def read_waypoint(self):
@@ -170,10 +171,15 @@ class navigation(object):
             self.z = []
             self.z.append(z)
         self.marker.id = self.id_new
-        self.marker.color.r = 1
+        hsv = (self.mag * 100000 + 1 )*120
+        r, g, b = colorsys.hsv_to_rgb(hsv/360,1,1)
+        self.marker.color.r = r
+        self.marker.color.g = g
+        self.marker.color.b = b
         self.marker.pose.position.x = x
         self.marker.pose.position.y = y
-        self.marker.pose.position.z = sum(self.z) / self.count
+        self.marker.pose.position.z = sum(self.z) / self.count /2.0 +0.10
+        self.marker.scale.z = sum(self.z) /  self.count
         self.pub3.publish(self.marker)
         after = rospy.get_time()
         if after - self.now > 0.05: #0.1秒ごとに記録
