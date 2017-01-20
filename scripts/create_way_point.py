@@ -23,14 +23,14 @@ if __name__ == '__main__':
     deg = [0,0]
     point = Point()
     x_plan   = 1  #x初期位置
-    y_plan   = 214#y初期位置
+    y_plan   = 217#y初期位置
     xy = np.array([[pgm[i + j * int(length[0]) + 4 ] for i in range(int(length[0]))] for j in range(int(length[1]))])
     south, west, east, north = True, True, True, True
     #障害物の判定
     for i in range(int(length[1])):
         for j in range(int(length[0])):
             if xy[i][j] == "0":
-                r = 10#行けない可能性の範囲
+                r = 5#行けない可能性の範囲
                 x = r
                 if not i > r: r = i
                 xy[i-r:i+x+1,j-x:j+x+1] = np.where(xy[i-r:i+x+1,j-x:j+x+1] == "0","0","100")
@@ -70,12 +70,15 @@ if __name__ == '__main__':
             difference_y = abs(point.y - old_y)
             difference_x = abs(point.x - old_x) 
             if not difference_x == 0 and not difference_y == 0:
-            #if not difference_x <= 0.05 and not difference_y <= 0.05: #low
-                #print point.x, point.y
                 f.write(str(point.x)+","+str(point.y)+","+str(point.z)+"\n")
             old_x = point.x
             old_y = point.y
-            #time.sleep(0.01)
-
         deg.pop(0)
     f.close()
+    #print len(xy[0])
+    a = np.where(xy == "100")
+    print len(a[0])
+    print len(a[1])
+    a = np.where(xy == "0")
+    print len(a[0])
+    print len(a[1])

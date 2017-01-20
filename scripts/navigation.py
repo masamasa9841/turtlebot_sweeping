@@ -39,7 +39,7 @@ class navigation(object):
         self.Y_KOUSHI = 150
         self.id_list = [[i + self.X_KOUSHI * j for i in range(self.X_KOUSHI)] for j in range(self.Y_KOUSHI)]
         self.mag = 0
-        self.f = open('../map/way.txt','w')
+        self.f = open('../map/way.txt','a')
         self.now = rospy.get_time()
 
     def callback(self, msg): 
@@ -116,9 +116,9 @@ class navigation(object):
             rospy.sleep(0.05)
 
     def nav(self):   
-        i = 100 #start_waypoint
+        i = 500 #start_waypoint
         while not rospy.is_shutdown():
-            print str(i)+"times"
+            print str(i)+"/532"
             self.angle_loop(i, 2, 5)
             self.angle_loop(i, 0.35, 1)
             self.destance_loop(i, self.speed)
@@ -182,7 +182,7 @@ class navigation(object):
         self.marker.scale.z = sum(self.z) /  self.count
         self.pub3.publish(self.marker)
         after = rospy.get_time()
-        if after - self.now > 0.05: #0.1秒ごとに記録
+        if after - self.now > 0.05: #0.05秒ごとに記録
             self.now = rospy.get_time()
             self.f.write(str(x)+" "+str(y)+" "+str(self.mag)+"\n")
 
