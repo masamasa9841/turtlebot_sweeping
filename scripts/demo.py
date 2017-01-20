@@ -4,8 +4,8 @@ import rospy
 import colorsys
 from visualization_msgs.msg import Marker
 if __name__ == '__main__':
-    X_KOUSHI = 300
-    Y_KOUSHI = 300
+    X_KOUSHI = 30
+    Y_KOUSHI = 30
     rospy.init_node('demo')
     pub3 = rospy.Publisher('z_mag', Marker, queue_size=1000)
     read, x, y, mag = [], [], [], []
@@ -54,5 +54,6 @@ if __name__ == '__main__':
                 marker.pose.position.z = mag_height / 2.0
                 marker.scale.z = mag_height 
                 pub3.publish(marker)
+                rospy.sleep(0.1)
             if rospy.is_shutdown():
                 break

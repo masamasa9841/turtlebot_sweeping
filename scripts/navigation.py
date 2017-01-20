@@ -116,7 +116,7 @@ class navigation(object):
             rospy.sleep(0.05)
 
     def nav(self):   
-        i = 500 #start_waypoint
+        i = 430 #start_waypoint
         while not rospy.is_shutdown():
             print str(i)+"/532"
             self.angle_loop(i, 2, 5)
