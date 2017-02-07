@@ -4,8 +4,8 @@ import rospy
 import colorsys
 from visualization_msgs.msg import Marker
 if __name__ == '__main__':
-    X_KOUSHI = 30
-    Y_KOUSHI = 30
+    X_KOUSHI = 80
+    Y_KOUSHI = 80
     rospy.init_node('demo')
     pub3 = rospy.Publisher('z_mag', Marker, queue_size=1000)
     read, x, y, mag = [], [], [], []
@@ -30,6 +30,9 @@ if __name__ == '__main__':
     y_math = 238 * 0.05 / Y_KOUSHI
     id_list = [[0 for i in range(X_KOUSHI)] for j in range(Y_KOUSHI)]
     mag_list = [[0 for i in range(X_KOUSHI)] for j in range(Y_KOUSHI)]
+    max_ave = 0
+    min_ave = 0
+    count = 0
     for i in range(len(x)):
         for j in range(X_KOUSHI):
             for k in range(Y_KOUSHI):
@@ -38,13 +41,32 @@ if __name__ == '__main__':
                     mag_list[k][j] += mag[i]
                 if rospy.is_shutdown():
                     break
+        count += 1
+        if count > 10000:
+            count = 0
+            print i
+
+    for j in range(X_KOUSHI):
+        for k in range(Y_KOUSHI):
+            if not id_list[k][j] == 0:
+                mag_ave = mag_list[k][j] / id_list[k][j]
+                if max_ave < mag_ave: max_ave = mag_ave
+                if min_ave > mag_ave: min_ave = mag_ave
+    max_ave = max_ave * 100000
+    min_ave = min_ave * 100000
+    lenght = max_ave - min_ave
+    print max_ave, min_ave
+    hoge = 240 / lenght + max_ave
+    hh = 2 / lenght 
+
+
     for j in range(X_KOUSHI):
         for k in range(Y_KOUSHI):
             if not id_list[k][j] == 0:
                 marker.id += 1
                 mag_ave = mag_list[k][j] / id_list[k][j]
-                mag_height = mag_ave / -4.0 * 10000000
-                hsv = (mag_ave * 100000 + 1) * 120
+                mag_height = mag_ave * hh * 500000
+                hsv = 240- (mag_ave * 100000 - min_ave ) * hoge
                 r, g, b = colorsys.hsv_to_rgb(hsv / 360,1,1)
                 marker.color.r = r
                 marker.color.g = g
